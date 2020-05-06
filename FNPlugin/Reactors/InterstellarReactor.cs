@@ -1155,6 +1155,11 @@ namespace FNPlugin.Reactors
             }
         }
 
+        public virtual double MaxCoreTemperature
+        {
+            get { return CoreTemperature; }
+        }
+
         public double HotBathTemperature
         {
             get
@@ -1764,6 +1769,7 @@ namespace FNPlugin.Reactors
 
             currentMass = part.mass;
             currentRawPowerOutput = RawPowerOutput;
+            coretempStr = CoreTemperature.ToString("0") + " K";
 
             Events["DeactivateReactor"].guiActive = HighLogic.LoadedSceneIsFlight && showShutDownInFlight && IsEnabled;
 
@@ -1771,7 +1777,8 @@ namespace FNPlugin.Reactors
             {
                 UpdateConnectedRecieversStr();
                 reactorSurface = radius * radius;
-            }
+                
+            }            
         }
 
         protected void UpdateFuelMode()
@@ -1784,8 +1791,6 @@ namespace FNPlugin.Reactors
             Events["StartBreedTritiumEvent"].active = canDisableTritiumBreeding && canBreedTritium && !breedtritium && IsFuelNeutronRich && IsEnabled;
             Events["StopBreedTritiumEvent"].active = canDisableTritiumBreeding && canBreedTritium && breedtritium && IsFuelNeutronRich && IsEnabled;
             UpdateFuelMode();
-
-            coretempStr = CoreTemperature.ToString("0") + " K";
 
             if (IsEnabled && CurrentFuelMode != null)
             {
@@ -2768,7 +2773,9 @@ namespace FNPlugin.Reactors
             GUILayout.EndHorizontal();
         }
 
-        protected virtual void WindowReactorSpecificOverride() { }
+        protected virtual void WindowReactorStatusSpecificOverride() { }
+
+        protected virtual void WindowReactorControlSpecificOverride() { }
 
         private void Window(int windowID)
         {
@@ -2798,13 +2805,15 @@ namespace FNPlugin.Reactors
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_Geeforceoverload") +" ", (100 * (1 - geeForceModifier)).ToString("0.000000") + "%", bold_style, text_style);//Geeforce overload
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_Overheating") +" ", (100 * (1 - overheatModifier)).ToString("0.000000") + "%", bold_style, text_style);//Overheating
 
+                WindowReactorStatusSpecificOverride();
+
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_Radius"), radius + "m", bold_style, text_style);//"Radius"
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_CoreTemperature"), coretempStr, bold_style, text_style);//"Core Temperature"
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_StatusLabel"), statusStr, bold_style, text_style);//"Status"
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_FuelMode"), fuelModeStr, bold_style, text_style);//"Fuel Mode"
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_FuelEfficiencyLabel"), (FuelEfficiency * 100).ToString(), bold_style, text_style);//"Fuel Efficiency"
 
-                WindowReactorSpecificOverride();
+                WindowReactorControlSpecificOverride();
 
                 PrintToGUILayout(Localizer.Format("#LOC_KSPIE_Reactor_CurrentMaxPowerOutputLabel"), PluginHelper.getFormattedPowerString(ongoing_total_power_generated, "0.0", "0.000") + " / " + PluginHelper.getFormattedPowerString(NormalisedMaximumPower, "0.0", "0.000"), bold_style, text_style);//"Current/Max Power Output"
 

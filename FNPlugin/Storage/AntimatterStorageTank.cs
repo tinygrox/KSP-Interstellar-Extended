@@ -83,6 +83,8 @@ namespace FNPlugin
 
         //settings
         [KSPField]
+        public float explosionPotentialMultiplier = 30000;
+        [KSPField]
         public int maximumTimewarpWithGeeforceWarning = 3;
         [KSPField]
         public double maxCharge = 1000;
@@ -522,6 +524,8 @@ namespace FNPlugin
 
             capacityStr = PluginHelper.formatMassStr(antimatterResource.amount * antimatterDensity);
             maxAmountStr = PluginHelper.formatMassStr(antimatterResource.maxAmount * antimatterDensity);
+
+            part.explosionPotential = (float)antimatterResource.amount * explosionPotentialMultiplier;
 
             UpdateTargetMass();
 
