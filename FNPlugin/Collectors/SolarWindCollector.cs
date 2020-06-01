@@ -822,7 +822,9 @@ namespace FNPlugin
 
             var atmosphereModifier = Math.Max(0, 1 - Math.Pow(vessel.atmDensity, 0.2));
 
-            effectiveIonisationFactor = ionisationFacingFactor * atmosphereModifier * Math.Pow(ionisationPercentage * 0.01, 2);
+            var helioSpereIonisationBonus = helioSphereFactor > 0.5 && helioSphereFactor < 1 ?  Math.Pow(1 - helioSphereFactor, 0.25) : 0;
+
+            effectiveIonisationFactor = ionisationFacingFactor * atmosphereModifier * Math.Max(helioSpereIonisationBonus, Math.Pow(ionisationPercentage * 0.01, 2));
             effectiveNonIonisationFactor = 1 - effectiveIonisationFactor;
 
             var effectiveSolidVesselDrag = !bIsExtended ? 0 : surfaceArea * vessel.obt_speed * vessel.obt_speed * (atmosphericGasKgPerSquareMeter + interstellarDustKgPerSquareMeter);

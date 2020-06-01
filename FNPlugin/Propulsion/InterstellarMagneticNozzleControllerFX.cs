@@ -72,7 +72,6 @@ namespace FNPlugin
         [KSPField(guiName = "#LOC_KSPIE_MagneticNozzleControllerFX_EngineIsp")]//Engine Isp
         protected double engineIsp;
         [KSPField(guiName = "#LOC_KSPIE_MagneticNozzleControllerFX_EngineFuelFlow")]//Engine Fuel Flow
-
         protected float engineFuelFlow;
         [KSPField(guiActive = false)]
         protected double chargedParticleRatio;
@@ -82,6 +81,10 @@ namespace FNPlugin
         protected double max_theoratical_fuel_flow_rate;
         [KSPField(guiActive = false)]
         protected double currentIsp;
+        [KSPField(guiActive = false)]
+        protected float currentThrust;
+        [KSPField(guiActive = false)]
+        protected double wasteheatConsumption;
 
         //Internal
         UI_FloatRange simulatedThrottleFloatRange;
@@ -326,10 +329,19 @@ namespace FNPlugin
         }
 
         // FixedUpdate is also called in the Editor
-        public void FixedUpdate() 
+        public void FixedUpdate()
         {
             if (HighLogic.LoadedSceneIsEditor)
                 return;
+
+            UpdateRunningEffect();
+            UpdatePowerEffect();
+        }
+
+        
+        public override void OnFixedUpdate() 
+        {
+            base.OnFixedUpdate();
 
             if (_attached_engine == null)
                 return;
@@ -363,6 +375,7 @@ namespace FNPlugin
 
                 _max_charged_particles_power = currentMaximumChargedPower * exchanger_thrust_divisor * _attached_reactor.ChargedParticlePropulsionEfficiency;
                 _charged_particles_requested = exhaustAllowed && _attached_engine.isOperational && _attached_engine.currentThrottle > 0 ? _max_charged_particles_power : 0;
+
                 _charged_particles_received = _charged_particles_requested > 0 ? consumeFNResourcePerSecond(_charged_particles_requested, ResourceManager.FNRESOURCE_CHARGED_PARTICLES) : 0;
 
                 // update Isp
@@ -385,25 +398,39 @@ namespace FNPlugin
                 {
                     if (_attached_engine.isOperational && _attached_engine.currentThrottle > 0)
                     {
-                        consumeFNResourcePerSecond(_charged_particles_received, ResourceManager.FNRESOURCE_WASTEHEAT);
+                        wasteheatConsumption = _charged_particles_received > _previous_charged_particles_received 
+                            ? _charged_particles_received + (_charged_particles_received - _previous_charged_particles_received)
+                            : _charged_particles_received - (_previous_charged_particles_received - _charged_particles_received);
+
                         _previous_charged_particles_received = _charged_particles_received;
                     }
-                    else if (_previous_charged_particles_received > 0)
-                    {
-                        consumeFNResourcePerSecond(_previous_charged_particles_received, ResourceManager.FNRESOURCE_WASTEHEAT);
-                        _previous_charged_particles_received = 0;
-                    }
+                    //else if (_previous_charged_particles_received > 0)
+                    //{
+                    //    wasteheatConsumption = _previous_charged_particles_received;
+                    //    _previous_charged_particles_received = 0;
+                    //}
                     else
                     {
+                        wasteheatConsumption = 0;
                         _charged_particles_received = 0;
                         _previous_charged_particles_received = 0;
                     }
+
+                    consumeFNResourcePerSecond(wasteheatConsumption, ResourceManager.FNRESOURCE_WASTEHEAT);
+                }
+
+                if (_charged_particles_received == 0)
+                {
+                    _chargedParticleMaximumPercentageUsage = 0;
+
+                    UpdateRunningEffect();
+                    UpdatePowerEffect();
                 }
 
                 // calculate power cost
                 var ispPowerCostMultiplier = 1 + max_power_multiplier - Math.Log10(currentIsp / minimum_isp);
                 var minimumEnginePower = _attached_reactor.MagneticNozzlePowerMult * _charged_particles_received * ispPowerCostMultiplier * 0.005 * Math.Max(_attached_reactor_distance, 1);
-                var neededBufferPower = Math.Min(Math.Max(powerBufferMax - powerBufferStore, 0), minimumEnginePower);
+                var neededBufferPower = Math.Min(getResourceAvailability(ResourceManager.FNRESOURCE_MEGAJOULES) ,  Math.Min(Math.Max(powerBufferMax - powerBufferStore, 0), minimumEnginePower));
                 _requestedElectricPower = minimumEnginePower + neededBufferPower;
 
                 _recievedElectricPower = CheatOptions.InfiniteElectricity || _requestedElectricPower == 0
@@ -473,6 +500,7 @@ namespace FNPlugin
             } 
             else 
             {
+                _chargedParticleMaximumPercentageUsage = 0;
                 _attached_engine.maxFuelFlow = 0.0000000001f;
                 _recievedElectricPower = 0;
                 _charged_particles_requested = 0;
@@ -480,16 +508,25 @@ namespace FNPlugin
                 _engineMaxThrust = 0;
             }
 
-            if (!string.IsNullOrEmpty(runningEffectName))
-            {
-                var runningEffectRatio = exhaustAllowed && _attached_engine.isOperational && _chargedParticleMaximumPercentageUsage > 0 ? _attached_engine.currentThrottle : 0;
-                part.Effect(runningEffectName, runningEffectRatio, -1);
-            }
-            if (!string.IsNullOrEmpty(powerEffectName))
-            {
-                var powerEffectRatio = exhaustAllowed && _attached_engine.isOperational && _chargedParticleMaximumPercentageUsage > 0 ? _attached_engine.currentThrottle : 0;
-                part.Effect(powerEffectName, powerEffectRatio, -1);
-            }
+            currentThrust = _attached_engine.GetCurrentThrust();
+        }
+
+        private void UpdatePowerEffect()
+        {
+            if (string.IsNullOrEmpty(powerEffectName))
+                return;
+
+            var powerEffectRatio = exhaustAllowed && _attached_engine != null && _attached_engine.isOperational && _chargedParticleMaximumPercentageUsage > 0 && currentThrust > 0 ? _attached_engine.currentThrottle : 0;
+            part.Effect(powerEffectName, powerEffectRatio, -1);
+        }
+
+        private void UpdateRunningEffect()
+        {
+            if (string.IsNullOrEmpty(runningEffectName))
+                return;
+
+            var runningEffectRatio = exhaustAllowed && _attached_engine != null && _attached_engine.isOperational && _chargedParticleMaximumPercentageUsage > 0 && currentThrust > 0 ? _attached_engine.currentThrottle : 0;
+            part.Effect(runningEffectName, runningEffectRatio, -1);
         }
 
         // Note: does not seem to be called while in vab mode

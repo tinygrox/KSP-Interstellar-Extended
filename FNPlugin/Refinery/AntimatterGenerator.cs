@@ -6,7 +6,7 @@ namespace FNPlugin.Refinery
     {
         public double ProductionRate { get { return _current_rate; } }
 
-        double _efficiency = 0.01149;
+        private double _efficiency = 0.01149;   // base efficiency
 
         public double Efficiency { get { return _efficiency;}}
 
@@ -19,21 +19,30 @@ namespace FNPlugin.Refinery
             _vessel = part.vessel;
             _antimatterDefinition = antimatterDefinition;
 
-            if (HighLogic.CurrentGame != null && HighLogic.CurrentGame.Mode == Game.Modes.CAREER)
-            {
-                if (PluginHelper.UpgradeAvailable("ultraHighEnergyPhysics"))
-                    _efficiency /= 100;
-                else if (PluginHelper.UpgradeAvailable("appliedHighEnergyPhysics"))
-                    _efficiency /= 500;
-                else if (PluginHelper.UpgradeAvailable("highEnergyScience"))
-                    _efficiency /= 2000;
-                else
-                    _efficiency /= 10000;
-            }
-            else
-            {
+            int techLevel = 0;
+            if (PluginHelper.UpgradeAvailable("ScienceLabUpgradeA"))
+                techLevel++;
+            if (PluginHelper.UpgradeAvailable("ScienceLabUpgradeB"))
+                techLevel++;
+            if (PluginHelper.UpgradeAvailable("ScienceLabUpgradeC"))
+                techLevel++;
+            if (PluginHelper.UpgradeAvailable("ScienceLabUpgradeD"))
+                techLevel++;
+            if (PluginHelper.UpgradeAvailable("ScienceLabUpgradeE"))
+                techLevel++;
+
+            if (techLevel >= 5)
+                _efficiency /= 20;
+            if (techLevel == 4)
                 _efficiency /= 100;
-            }
+            else if (techLevel == 3)
+                _efficiency /= 500;
+            else if (techLevel == 2)
+                _efficiency /= 2000;
+            else if (techLevel == 1)
+                _efficiency /= 10000;
+            else
+                _efficiency /= 50000;
         }
 
         public void Produce(double energy_provided_in_megajoules) 

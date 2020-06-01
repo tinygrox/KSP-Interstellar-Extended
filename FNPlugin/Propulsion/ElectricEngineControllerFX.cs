@@ -122,9 +122,9 @@ namespace FNPlugin
         public double calculated_thrust;
         [KSPField(guiActive = false)]
         public double simulated_max_thrust;
-        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "#LOC_KSPIE_ElectricEngine_warpIsp", guiFormat = "F1", guiUnits = "s")]
+        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "#LOC_KSPIE_ElectricEngine_warpIsp", guiFormat = "F1", guiUnits = "s")]
         public double engineIsp;
-        [KSPField(guiActive = false, guiActiveEditor = true, guiName = "#LOC_KSPIE_ElectricEngine_maxPowerInput", guiUnits = " MW")]
+        [KSPField(guiActive = false, guiActiveEditor = true, guiName = "#LOC_KSPIE_ElectricEngine_maxPowerInput",  guiFormat = "F3", guiUnits = " MW")]
         public double scaledMaxPower = 0;
         [KSPField(guiActive = false, guiActiveEditor = true, guiName = "#LOC_KSPIE_ElectricEngine_engineMass", guiUnits = " t")]
         public float partMass = 0;
@@ -157,9 +157,11 @@ namespace FNPlugin
         [KSPField(guiActive = false, guiName = "#LOC_KSPIE_FusionEngine_timeDilation", guiFormat = "F10")]
         public double timeDilation = 1;
 
-        [KSPField(guiActive = false)]
+        [KSPField]
+        public double prefabMass;
+        [KSPField]
         public double expectedMass = 0;
-        [KSPField(guiActive = false)]
+        [KSPField]
         public double desiredMass = 0;
 
         [KSPField(guiActive = false)]
@@ -429,15 +431,17 @@ namespace FNPlugin
 
         private void ScaleParameters()
         {
-            expectedMass = (double)(decimal)part.prefabMass * Math.Pow(storedAbsoluteFactor, massTweakscaleExponent);
-            desiredMass = (double)(decimal)part.prefabMass * Math.Pow(storedAbsoluteFactor, massExponent);
+            prefabMass = part.prefabMass;
+            expectedMass = prefabMass * Math.Pow(storedAbsoluteFactor, massTweakscaleExponent);
+            desiredMass = prefabMass * Math.Pow(storedAbsoluteFactor, massExponent);
             scaledMaxPower = maxPower * Math.Pow(storedAbsoluteFactor, powerExponent);
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            return (float)(desiredMass - expectedMass);
+            return (float)desiredMass;
         }
+
         public ModifierChangeWhen GetModuleMassChangeWhen()
         {
             return ModifierChangeWhen.STAGED;
